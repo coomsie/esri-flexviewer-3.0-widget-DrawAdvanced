@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TextInput xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			 xmlns:s="library://ns.adobe.com/flex/spark" 
+			 xmlns:mx="library://ns.adobe.com/flex/mx"
+			 alpha="0.5"
+			 height="30"
+			 minWidth="100"
+			 text=""
+			 width="100"
+			 textAlign="center"
+			 change="input_changeHandler(event)"
+			 creationComplete="input_creationCompleteHandler(event)"
+			 keyDown="input_keyDownHandler(event)"
+			 mouseDownOutside="input_mouseDownOutsideHandler(event)" >
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.symbols.CompositeSymbol;
+			import com.esri.ags.symbols.Symbol;
+			import com.esri.ags.symbols.TextSymbol;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.events.CustomEvent;
+			
+			import mx.events.FlexEvent;
+			import mx.events.FlexMouseEvent;
+			import mx.managers.PopUpManager;
+			
+			import spark.events.TextOperationEvent;
+			
+			
+			/* -------------------------------------------------------------------
+			Component constants
+			---------------------------------------------------------------------- */
+
+			public static const TEXTEDITOR_TEXTADDED:String = "TextEditor_TextAdded";
+			
+			
+			/* -------------------------------------------------------------------
+			Component variables
+			---------------------------------------------------------------------- */
+
+			private var _graphic:Graphic;
+			
+			public var popX:Number;
+			public var popY:Number;
+
+			/* -------------------------------------------------------------------
+			Component properties
+			---------------------------------------------------------------------- */
+
+			[Bindable]
+			public function set graphic(value:Graphic):void
+			{
+				_graphic = value;
+				
+				if (_graphic && _graphic.symbol is TextSymbol)
+				{
+					// Set the font to match the graphics font properties
+					var sym:TextSymbol;
+					
+					if (_graphic.symbol is CompositeSymbol)
+					{
+						var comp:CompositeSymbol = CompositeSymbol(graphic.symbol);
+						for each (var symbol:Symbol in comp.symbols)
+						{
+							if (symbol is TextSymbol)
+							{
+								sym = symbol as TextSymbol;
+								break
+							}
+						}
+						
+						// Check that a text symbol was found
+						if (sym == null)					
+						{
+							sym = new TextSymbol();
+						}
+					} 
+					else 
+					{
+						sym = TextSymbol(_graphic.symbol);
+					}
+					
+					var textFormat:TextFormat = sym.textFormat;
+					this.setStyle("fontFamily",textFormat.font);
+					this.setStyle("fontSize",textFormat.size);
+					this.setStyle("color",textFormat.color);
+					this.setStyle("textAlign",textFormat.align);					
+				
+					// Set the text if available
+					if (sym.text && sym.text != "")
+					{
+						this.text = sym.text;
+					}
+					
+				}
+			}
+			
+			public function get graphic():Graphic
+			{
+				return _graphic;
+			}
+			
+			
+			
+			
+			
+			/* -------------------------------------------------------------------
+			Component event handlers
+			---------------------------------------------------------------------- */
+
+			/**
+			 * Called after the text has changed
+			 */
+			protected function input_changeHandler(event:TextOperationEvent):void
+			{
+				// Update the component width
+				adjustWidth();
+			}
+
+			protected function input_creationCompleteHandler(event:FlexEvent):void
+			{
+				// Focus and position this cntrol on the map
+				this.setFocus();
+				this.x = popX - (this.width/2);
+				this.y = popY - (this.height/2);			}
+
+			/**
+			 * Called when the keys are pressed and this componen has focus.
+			 */
+			protected function input_keyDownHandler(event:KeyboardEvent):void
+			{
+				// Listens for keyboard events on the graphic
+				// Check to see if Enter key was pressed.
+				if (event.ctrlKey && event.keyCode == Keyboard.ENTER)
+				{
+					adjustHeight();
+					return;
+				} 
+				if (event.keyCode == Keyboard.ENTER)
+				{
+					updateTextSymbol();
+				} 
+				if (event.keyCode == Keyboard.ESCAPE)
+				{
+					updateTextSymbol();
+				} 					
+			}
+			
+			/**
+			 * Called when the user clicks the mouse and the mouse is not over tis component.
+			 */
+			protected function input_mouseDownOutsideHandler(event:FlexMouseEvent):void
+			{
+				updateTextSymbol();
+			}
+
+			
+			
+			/* -------------------------------------------------------------------
+			Component actions
+			---------------------------------------------------------------------- */
+
+			/** 
+			 * Resets the width of the component to fit the current text and centres over the pop point
+			 */
+			private function adjustWidth():void
+			{
+				var metrics:TextLineMetrics = this.measureText(this.text);
+				this.width = metrics.width + 50;
+				this.x = popX - (this.width/2);
+			}
+			
+			/** 
+			 * Resets the height of the component to fit the current text and centres over the pop point
+			 */
+			private function adjustHeight():void
+			{
+				var metrics:TextLineMetrics = this.measureText(this.text);
+				this.height += metrics.height;
+				this.y = popY - (this.height/2);
+			} 
+			
+			/** 
+			 * Updates the text symbol
+			 */
+			private function updateTextSymbol():void
+			{
+				if (this.text == null || this.text == "" )
+				{
+					_graphic.refresh();
+					PopUpManager.removePopUp(this);
+					return;
+				}
+				
+				// Get the text symbol
+				var sym:TextSymbol;
+				var newSym:TextSymbol;
+				var symbol:Symbol;
+				
+				if (_graphic.symbol is CompositeSymbol)
+				{
+					var comp:CompositeSymbol = graphic.symbol as CompositeSymbol;
+					for each (symbol in comp.symbols)
+					{
+						if (symbol is TextSymbol) 
+						{
+							sym = symbol as TextSymbol;
+							break
+						}
+					}
+					
+					// Check that a text symbol was found
+					if (sym == null) 
+					{
+						sym = new TextSymbol();
+					}
+					
+					newSym = new TextSymbol(
+						this.text,sym.htmlText,sym.color,sym.alpha,sym.border,sym.borderColor,
+						sym.background,sym.backgroundColor);
+					newSym.textFormat = sym.textFormat
+					
+					var newSyms:Array = [];					
+					for each (symbol in comp.symbols)
+					{
+						if (symbol is TextSymbol) {
+							newSyms.push(newSym);
+						} 
+						else 
+						{
+							newSyms.push(symbol);
+						}
+					}
+					var newComp:CompositeSymbol = new CompositeSymbol(newSyms);
+					_graphic.symbol = newComp;
+				} 
+				else 
+				{
+					sym = _graphic.symbol as TextSymbol;
+					newSym = new TextSymbol(
+						this.text,sym.htmlText,sym.color,sym.alpha,sym.border,sym.borderColor,
+						sym.background,sym.backgroundColor);
+					newSym.textFormat = sym.textFormat
+					_graphic.symbol = newSym;
+				}
+				
+				// Dispatch event to tell listener to perfom action
+				dispatchEvent(new CustomEvent(TEXTEDITOR_TEXTADDED, {graphic:_graphic},true));
+				
+				// Remove this component from popup
+				PopUpManager.removePopUp(this)
+			}
+		]]>
+	</fx:Script>
+</s:TextInput>

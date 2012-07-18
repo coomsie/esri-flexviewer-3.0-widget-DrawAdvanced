@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!---
+The default item renderer for the GraphicTemplatePicker skin.
+@private
+-->
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				name="GraphicTemplatePickerListItemRenderer"
+				width="80" height="80"
+				focusEnabled="false"
+				mouseChildren="true">
+	
+	<s:states>
+		<s:State name="normal"/>
+		<s:State name="hovered"/>
+		<s:State name="selected"/>
+	</s:states>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.symbols.SimpleFillSymbol;
+			import com.esri.ags.symbols.SimpleLineSymbol;
+			import com.esri.ags.symbols.SimpleMarkerSymbol;
+			import com.esri.ags.symbols.Symbol;
+			import com.esri.ags.symbols.TextSymbol;
+			import com.esri.viewer.AppEvent;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.events.GraphicTemplateEvent;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.events.GraphicTemplatePickerEvent;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.skins.GraphicTemplatePickerListItemRemoveButtonSkin;
+			
+			import flashx.textLayout.formats.TextAlign;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.controls.Alert;
+			import mx.core.IVisualElement;
+			
+			import spark.components.List;
+			
+			override public function set data(value:Object):void
+			{
+				super.data = value;
+				
+				//First remove everything from the contentGroup
+				contentGroup.removeAllElements();
+
+				// set style on the label
+				templateLabel.setStyle("textAlign", TextAlign.CENTER);
+				
+				if (value)
+				{
+					templateLabel.text = value.name;
+					toolTip = (value.description != "") ? value.name + ": " + value.description : value.name;
+				}
+				
+				if (value.prototype.symbol)
+				{
+					// Check if this is a text symbol
+					if (value.prototype.symbol is TextSymbol)
+					{
+						// Add a label with the correct settings to the display area.
+						var txtSym:TextSymbol = TextSymbol(value.prototype.symbol);
+						
+						var lab:Label = new Label();
+						lab.text = "Test";
+						lab.alpha = txtSym.alpha;
+						lab.rotation = txtSym.angle;
+						lab.x = (contentGroup.width/2) - (lab.width/2) + txtSym.xoffset;
+						lab.y = (contentGroup.height/2) - (lab.height/2) + txtSym.yoffset;
+						
+						var fp:Object = {};
+						if (txtSym.textFormat)
+						{
+							fp.fontFamily = txtSym.textFormat.font || "Arial";
+							fp.fontWeight = txtSym.textFormat.bold ? "bold" : "normal";
+							fp.fontStyle = txtSym.textFormat.italic ? "italic" : "normal";
+							fp.fontSize = txtSym.textFormat.size || 14;
+							fp.textDecoration = txtSym.textFormat.underline ? "underline" : "none";
+						}
+						else
+						{
+							fp.fontFamily = "Arial";
+							fp.fontWeight = "normal";
+							fp.fontStyle = "normal";
+							fp.fontSize = 14;
+							fp.textDecoration = "none";
+						}
+						
+						lab.setStyle("fontFamily",fp.fontFamily);
+						lab.setStyle("fontSize",fp.fontSize);
+						lab.setStyle("fontStyle",fp.fontStyle);
+						lab.setStyle("fontWeight",fp.fontWeight);
+						lab.setStyle("textDecoration",fp.textDecoration);
+						lab.setStyle("color",txtSym.color);
+						
+						//trace("Text Colour: " + txtSym.color);
+						//trace("Black: " + 0x000000);
+						//trace("White: " + 0xFFFFFF);
+
+						// Add label to the display area
+						contentGroup.addElement(lab);
+					}
+					else
+					{
+						// Create a swatch from the symbol and add to the display area
+						contentGroup.addElement(IVisualElement(Symbol(value.prototype.symbol).createSwatch(contentGroup.width, contentGroup.height)));
+					}
+				}
+				else
+				{
+					trace("Graphic template Picker List Item - No Symbol");
+					// Do not render
+				}
+			}
+			
+			/**
+			 * Called when the user clicks the remove icon.
+			 */
+			protected function removeButton_clickHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();
+				var evt:AppEvent = new AppEvent(GraphicTemplatePickerEvent.GRAPHIC_TEMPLATE_PICKER_REMOVETEMPLATE,data);
+				this.parentDocument.hostComponent.parentDocument.hostComponent.dispatchEvent(evt);
+			}
+			
+			/**
+			 * Called when the user clicks the modify icon.
+			 */
+			protected function modifyButton_clickHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();
+				var evt:AppEvent = new AppEvent(GraphicTemplatePickerEvent.GRAPHIC_TEMPLATE_PICKER_MODIFYTEMPLATE,data);
+				this.parentDocument.hostComponent.parentDocument.hostComponent.dispatchEvent(evt);
+			}
+		]]>
+	</fx:Script>
+	
+	
+	<!-- border/background rectangle -->
+	<s:Rect left="0" right="0" top="0" bottom="0" radiusX="5" radiusY="5">
+		<s:stroke>
+			<mx:SolidColorStroke 
+				alpha.normal="0"
+				color.hovered="{getStyle('rollOverColor')}"
+				color.normal="{getStyle('contentBackgroundColor')}"
+				color.selected="{getStyle('focusColor')}"
+				weight="2"
+				weight.selected="3"/>
+		</s:stroke>
+		
+		<s:fill>
+			<mx:SolidColor 
+				alpha.normal="0"
+				alpha.selected="0.25"
+				alpha.hovered="0.25"
+				color.hovered="{getStyle('rollOverColor')}"
+				color.normal="{getStyle('contentBackgroundColor')}"
+				color.selected="{getStyle('focusColor')}"
+				/>
+		</s:fill>
+	</s:Rect>
+	
+	
+	<s:Group id="contentGroup"
+			 width="60" height="40"
+			 left="10" right="10" top="5" bottom="35" />
+	<s:Label id="templateLabel"
+			 width="40" height="40"
+			 left="0" right="0" top="50" bottom="0"
+			 maxDisplayedLines="2"/>
+	<s:Button id="removeButton" buttonMode="true" useHandCursor="true" 
+			  skinClass="widgets.SENZ_DrawAdvanced.com.nzgc.viewer.skins.GraphicTemplatePickerListItemRemoveButtonSkin"
+			  left="2" top="2" width="20" height="20" 
+			  visible="{this.parentDocument.hostComponent.parentDocument.hostComponent.organiseMode}" 
+			  click="removeButton_clickHandler(event)" toolTip="Click to remove this template." />
+	<s:Button id="modifyButton" buttonMode="true" useHandCursor="true" 
+			  skinClass="widgets.SENZ_DrawAdvanced.com.nzgc.viewer.skins.GraphicTemplatePickerListItemModifyButtonSkin"
+			  left="2" top="24" width="20" height="20" 
+			  visible="{this.parentDocument.hostComponent.parentDocument.hostComponent.organiseMode}" 
+			  click="modifyButton_clickHandler(event)" toolTip="Click to modify this template." />
+	
+</s:ItemRenderer>

@@ -1,0 +1,527 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ItemRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				xmlns:s="library://ns.adobe.com/flex/spark" 
+				xmlns:mx="library://ns.adobe.com/flex/mx" 
+				autoDrawBackground="false"
+				buttonMode="true"
+				doubleClickEnabled="true"
+				minHeight="30"
+				width="100%"
+				useHandCursor="true"
+				click="itemrenderer_clickHandler(event)"
+				doubleClick="itemrenderer_doubleClickHandler(event)"
+				dataChange="itemrenderer_dataChangeHandler(event)"
+				mouseOut="itemrenderer_mouseOutHandler(event)"
+				mouseOver="itemrenderer_mouseOverHandler(event)"
+				updateComplete="itemrenderer_updateCompleteHandler(event)"
+				toolTip="Click to pan to this graphic{'\n'}Double click to zoom to this graphic">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.geometry.*;
+			import com.esri.ags.symbols.CompositeSymbol;
+			import com.esri.ags.symbols.Symbol;
+			import com.esri.ags.symbols.TextSymbol;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.components.GraphicDataGroup;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.events.FlexEvent;
+			import mx.formatters.NumberFormatter;
+			
+			
+			/* -------------------------------------------------------------------
+			Component variables
+			---------------------------------------------------------------------- */
+			
+			// Item data object
+			[Bindable]
+			private var _graphic:Graphic;
+			
+			private var _lastGraphicSymbol:Symbol;
+			private var _lastGraphicSwatch:UIComponent;
+			
+			[Bindable]
+			private var _measureText:String = "";
+			
+			private var _atWatcher:ChangeWatcher;
+			
+			/* -------------------------------------------------------------------
+			Component event handlers
+			---------------------------------------------------------------------- */
+			
+			/**
+			 * Called when this item renderer is clicked by the user with the mouse.
+			 */
+			protected function itemrenderer_clickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_CLICK, true)); // bubbles
+			}
+			
+			/**
+			 * Called when this item renderer is double clicked by the user with the mouse.  
+			 * This will always be proceded by a click action.
+			 */
+			protected function itemrenderer_doubleClickHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_DOUBLE_CLICK, true)); // bubbles			
+			}
+			
+			/**
+			 * Called when the data object linked to this item renderer changes.
+			 */
+			protected function itemrenderer_dataChangeHandler(event:FlexEvent):void
+			{
+				_graphic = data as Graphic;
+				
+				// Confirm a graphic with a symbol has been supplied
+				if (_graphic && _graphic.symbol && _graphic.attributes)
+				{
+					// Add change watcher for attributes change
+					_atWatcher = ChangeWatcher.watch(_graphic.attributes, "lengthMeasurement",updateMeasurements);
+					
+					// Update the symbol swatch
+					updateSymbolSettings();
+					
+					// Setup item context menu
+					const cm:ContextMenu = new ContextMenu();
+					cm.hideBuiltInItems();
+					
+					// Set hasTextSymbol Flag
+					var isText:Boolean = false;
+					if (_graphic.symbol is TextSymbol||_graphic.symbol is CompositeSymbol)
+						isText = true;
+					
+					// Define context meneu item
+					var item:ContextMenuItem;
+					
+					// Add the graphic properties link
+					item = new ContextMenuItem("Graphic Properties");
+					item.enabled = true;
+					item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_editGraphicProperties);
+					cm.customItems.push(item);
+					
+					// Add zoom to 
+					item = new ContextMenuItem("Zoom To Graphic");
+					item.enabled = true;
+					item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_zoomToGraphic);
+					item.separatorBefore = true;
+					cm.customItems.push(item);
+					
+					// Add options for non text graphics
+					if (!isText)
+					{
+						// Add recalculate measurements options
+						if (_graphic.attributes["showMeasurements"] == true)
+						{
+							// Add a hide label item 
+							item = new ContextMenuItem("Hide Graphic Measurements");
+							item.enabled = true;
+							item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_removeGraphicMeasurements);
+							cm.customItems.push(item);
+						} else {
+							// Add recalculate measurements  
+							item = new ContextMenuItem("Label Graphic Measurements");
+							item.enabled = true;
+							item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_labelGraphicMeasurements);
+							item.enabled = true;
+							cm.customItems.push(item);
+						}
+						
+						// Add create buffer option
+						item = new ContextMenuItem("Create Graphic Buffer");
+						item.enabled = true;
+						item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_bufferGraphic);
+						cm.customItems.push(item);
+					}
+					
+					// Add copy/paste/delete options
+					item = new ContextMenuItem("Copy Graphic\tCtrl+C");
+					item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_copyGraphic);
+					item.enabled = true;
+					item.separatorBefore = true;
+					cm.customItems.push(item);
+					
+					item = new ContextMenuItem("Paste Graphic\tCtrl+V");
+					item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_pasteGraphic);
+					item.enabled = true;
+					cm.customItems.push(item);
+					
+					item = new ContextMenuItem("Delete Graphic\tDelete");
+					item.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT,cm_deleteGraphic);
+					item.separatorBefore = true;
+					cm.customItems.push(item);
+					
+					// Set the context menu
+					contextMenu = cm;
+					
+					// Set the measurement text
+					_measureText = formatMeasurements();
+				}
+				else
+				{
+					// Remove existing symbol swatch
+					if (_lastGraphicSwatch && (_lastGraphicSwatch.parent == symbolIcon))
+					{
+						symbolIcon.removeChild(_lastGraphicSwatch);
+					}
+					
+					// Hide the context menu
+					contextMenu = null;
+				}
+			}
+			
+			/** 
+			 * Called when the mouse moves over the item renderer
+			 */
+			protected function itemrenderer_mouseOutHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_MOUSE_OUT, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when the mouse moves off the item renderer
+			 */
+			protected function itemrenderer_mouseOverHandler(event:MouseEvent):void
+			{
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_MOUSE_OVER, true)); // bubbles
+			}
+			
+			/**
+			 * Called when the item renderer update has completed.
+			 */
+			protected function itemrenderer_updateCompleteHandler(event:FlexEvent):void
+			{
+				updateMeasurements(null);
+				updateSymbolSettings();
+				
+				// Set textsymbol text
+				if (_graphic && _graphic.symbol is TextSymbol)
+				{
+					symbolText.text = TextSymbol(_graphic.symbol).text;
+					symbolText.visible = symbolText.includeInLayout = true;
+				}
+				else
+				{
+					symbolText.text = "";
+					symbolText.visible = symbolText.includeInLayout = false;
+				}
+			}
+			
+			
+			
+			/* -------------------------------------------------------------------
+			Component actions
+			---------------------------------------------------------------------- */
+			
+			/** 
+			 * Called when the user clicks on the item's delete icon
+			 */
+			private function deleteGraphic(event:MouseEvent):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_DELETE, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when the user clicks on the item's property icon
+			 */
+			private function editGraphicProperties(event:MouseEvent):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_EDIT_PROPERTIES, true)); // bubbles
+			}
+			
+			
+			/* -------------------------------------------------------------------
+			Component contextmenu actions
+			---------------------------------------------------------------------- */
+			
+			/** 
+			 * Called when user clicks edit properties on the contextmenu
+			 */
+			private function cm_editGraphicProperties(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_EDIT_PROPERTIES, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when user clicks edit tag on the contextmenu
+			 */
+			private function cm_editGraphicTag(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_TAG, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when user clicks label graphic measurements on the contextmenu
+			 */
+			private function cm_labelGraphicMeasurements(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_LABELMEASUREMENTS, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when user clicks hide graphic measurements on the contextmenu
+			 */
+			private function cm_removeGraphicMeasurements(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_HIDEMEASUREMENTS, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when user clicks copy on the contextmenu
+			 */
+			private function cm_copyGraphic(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_COPY, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when user clicks copy on the contextmenu
+			 */
+			private function cm_pasteGraphic(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_PASTE, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when the user clicks delete on the context menu
+			 */
+			private function cm_deleteGraphic(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_DELETE, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when user clicks buffer graphic on the contextmenu
+			 */
+			private function cm_bufferGraphic(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_BUFFER, true)); // bubbles
+			}
+			
+			/** 
+			 * Called when user clicks tag graphic on the contextmenu
+			 */
+			private function cm_zoomToGraphic(event:Event):void
+			{
+				event.stopPropagation(); // don't let this click event go up to the ItemRenderer
+				dispatchEvent(new Event(GraphicDataGroup.GRAPHIC_ZOOMTO, true)); // bubbles
+			}
+			
+			/**
+			 * Prepares the measurement details string to be displayed in the results
+			 */
+			private function formatMeasurements():String
+			{
+				var result:String = "";
+				
+				if (_graphic)
+				{
+					var props:GraphicPropertiesItem = GraphicPropertiesItem(_graphic.attributes);
+					var graphicDG:GraphicDataGroup = parent as GraphicDataGroup;
+
+					if (graphicDG && props)
+					{
+						var formatter:NumberFormatter = graphicDG.numberFormatter;
+						
+						if (formatter && graphicDG.lengthFormat && graphicDG.areaFormat )
+						{
+							switch(_graphic.geometry.type)
+							{
+								case Geometry.MAPPOINT:
+								{
+									// Append the map position details
+									var pt:MapPoint = MapPoint(_graphic.geometry);
+									formatter.precision = graphicDG.lengthFormat.precision;
+									result += "<b>Location X:</b> " + formatter.format(pt.x) + "<b> Y:</b> " + formatter.format(pt.y) ;
+									break;
+								}
+									
+								case Geometry.POLYLINE:
+								{
+									if (props.lengthMeasurement)
+									{
+										// Append the length details
+										formatter.precision = graphicDG.lengthFormat.precision;
+										var lengthValue:Number = props.lengthMeasurement * graphicDG.lengthFormat.conversion;
+										result += "<b>Length:</b> " + formatter.format(lengthValue) + " " + graphicDG.lengthFormat.abbr ;
+									}
+									break;
+								}
+									
+								case Geometry.POLYGON:
+								{
+									if (props.lengthMeasurement && props.areaMeasurement)
+									{
+										// Append the area details
+										var areaValue:Number = props.areaMeasurement * graphicDG.areaFormat.conversion;
+										result += "<b>Area:</b> " + formatter.format(areaValue) + " " + graphicDG.areaFormat.abbr; 
+										
+										// Append the perimeter details
+										var perimeterValue:Number = props.lengthMeasurement * graphicDG.lengthFormat.conversion;
+										formatter.precision = graphicDG.lengthFormat.precision;
+										result += "<br/><b>Perimeter:</b> " + formatter.format(perimeterValue) + " " + graphicDG.lengthFormat.abbr ;
+									}
+									break;
+								}
+							}
+						}
+					}
+				}
+				return result;
+			}
+			
+			/**
+			 * Updates the displayed measurement details. 
+			 */
+			private function updateMeasurements(event:Event):void
+			{
+				_measureText = formatMeasurements();
+			}
+			
+			private function updateSymbolSettings():void
+			{// Add symbol swatch					
+			if (_graphic && _lastGraphicSymbol !== _graphic.symbol)
+				{
+					if (symbolIcon.numChildren > 0)
+					{
+						// Remove click listener
+						var oldSwatch:UIComponent = symbolIcon.getChildAt(0) as UIComponent;
+						oldSwatch.removeEventListener(MouseEvent.CLICK,editGraphicProperties);
+						
+						// Remove the old swatch							
+						symbolIcon.removeChildAt(0);
+					}
+					_lastGraphicSymbol = _graphic.symbol;
+					
+					if (_lastGraphicSymbol is TextSymbol||_lastGraphicSymbol is CompositeSymbol)
+					{
+						// Put text symbol here
+						_lastGraphicSwatch = new Image();
+						Image(_lastGraphicSwatch).source = "assets/images/i_draw_text.png";
+						Image(_lastGraphicSwatch).width = 20;
+						Image(_lastGraphicSwatch).height = 20;
+					}
+					else
+					{
+						// Generate the symbol swatch to display 
+						_lastGraphicSwatch = _lastGraphicSymbol.createSwatch(20, 20);
+					}
+
+					// Add a click listener to the swatch
+					_lastGraphicSwatch.addEventListener(MouseEvent.CLICK,editGraphicProperties);
+					
+					// Add a tooltip to the swatch
+					_lastGraphicSwatch.toolTip = "Click to edit the properties of this graphic"
+				}
+				
+				symbolIcon.addChild(_lastGraphicSwatch);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="normal"/>
+		<s:State name="hovered"/>
+	</s:states>
+	
+	<!-- border/background rectangle -->
+	<s:Rect left="0" right="0" top="0" bottom="0" radiusX="4" radiusY="4" 
+			visible="{_graphic &amp;&amp; _graphic.attributes.selected != true}"
+			includeInLayout="{_graphic &amp;&amp; _graphic.attributes.selected != true}" >
+		<s:stroke>
+			<mx:SolidColorStroke alpha="{getStyle('borderAlpha')}"
+								 color="{getStyle('borderColor')}"
+								 weight="1"/>
+		</s:stroke>
+		<s:fill>
+			<mx:SolidColor alpha="0.3"
+						   alpha.hovered="0.8"
+						   color.hovered="{getStyle('rollOverColor')}"
+						   color.normal="{getStyle('contentBackgroundColor')}"/>
+		</s:fill>
+	</s:Rect>
+	
+	<s:Rect left="0" right="0" top="0" bottom="0" radiusX="4" radiusY="4" 
+			visible="{_graphic &amp;&amp; _graphic.attributes.selected == true}"
+			includeInLayout="{_graphic &amp;&amp; _graphic.attributes.selected == true}" >
+		<s:stroke>
+			<mx:SolidColorStroke alpha="{getStyle('borderAlpha')}"
+								 color="{getStyle('borderColor')}"
+								 weight="1"/>
+		</s:stroke>
+		<s:fill>
+			<mx:SolidColor alpha="0.3"
+						   alpha.hovered="0.8"
+						   color.hovered="{getStyle('rollOverColor')}"
+						   color.normal="{getStyle('focusColor')}"/>
+		</s:fill>
+	</s:Rect>
+	
+	
+	<s:HGroup width="100%" height="100%"
+			  paddingBottom="3"
+			  paddingLeft="3"
+			  paddingRight="3"
+			  paddingTop="3"
+			  verticalAlign="middle">
+		<mx:UIComponent id="symbolIcon"
+						width="20" height="20">
+			<mx:filters>
+				<mx:GlowFilter alpha="0.5"
+							   blurX="10"
+							   blurY="10"
+							   color="#000000"/>
+			</mx:filters>
+		</mx:UIComponent>
+		<s:VGroup width="100%" height="100%"
+				  verticalAlign="middle">
+			<s:Label width="100%"
+					 maxDisplayedLines="1"
+					 text="{_graphic.attributes.title}"
+					 styleName="WidgetTitle"/>
+			
+			<!-- TextSymbol label text -->
+			<s:Label id="symbolText"
+					 width="100%"
+					 visible="false" 
+					 includeInLayout="false"/>
+			
+			<!-- Content - converts text using html formatting -->
+			<s:RichText id="infoContent"
+						width="100%" 
+						textFlow="{TextConverter.importToFlow(_graphic.attributes.content,TextConverter.TEXT_FIELD_HTML_FORMAT)}"
+						horizontalCenter="0" verticalCenter="0" 
+						maxDisplayedLines="-1" 
+						visible="{_graphic.attributes.content.length > 0}"
+						includeInLayout="{_graphic.attributes.content.length > 0}" /> 
+			
+			<!-- Measurements - converts text using html formatting -->
+			<s:RichText id="infoMeasurements"
+						width="100%" 
+						textFlow="{TextConverter.importToFlow(_measureText,TextConverter.TEXT_FIELD_HTML_FORMAT)}"
+						horizontalCenter="0" verticalCenter="0" 
+						maxDisplayedLines="-1" /> 
+		</s:VGroup>
+		
+		<mx:Image click="deleteGraphic(event)"
+				  height="20"
+				  source="assets/images/w_close_red.png"
+				  toolTip="Click to delete this graphic"
+				  verticalCenter="0"
+				  width="20"/>
+	</s:HGroup>
+</s:ItemRenderer>

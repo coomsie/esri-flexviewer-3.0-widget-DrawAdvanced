@@ -1,0 +1,147 @@
+<?xml version="1.0" ?>
+<configuration>
+    <!-- Map and geometry service settings -->
+    <!-- <geometryservice>http://sampleserver3.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer</geometryservice> -->
+    <geometryservice>http://arcgis.ecan.govt.nz/ArcGIS/rest/services/Geometry/GeometryServer</geometryservice>
+    <spatialref>2193</spatialref>
+    
+    <!-- If utilising an arcgis server version 10 or higher for queries, etc, the following setting should be set to true.  If utilising an ArcGIS 9.3x server, set to false -->
+	<useAMF>false</useAMF>
+    
+    <!-- Graphics layer name -->
+    <graphicsLayerName alias="Drawn Graphics" >RedLiningGraphicsLayer</graphicsLayerName>
+    
+    	<!-- Feature creation functionality -->
+    <createoptions>
+        <polygondrawtools>polygon,freehandpolygon,extent,autoComplete,circle,ellipse</polygondrawtools>
+        <polylinedrawtools>polyline,freehandpolyline,line</polylinedrawtools>
+    </createoptions>
+    
+    <!-- Toolbar functionality -->
+    <toolbarvisible>true</toolbarvisible>
+    <toolbarcutvisible>true</toolbarcutvisible>
+    <toolbarmergevisible>true</toolbarmergevisible>
+    <toolbarreshapevisible>true</toolbarreshapevisible>   
+    
+    <!-- Distance units used for meaurement unit conversion -->
+    <distanceunits>
+        <distanceunit abbr="m" conversion="1" precision="0">Meters</distanceunit>
+        <distanceunit abbr="km" conversion=".001" precision="3">Kilometers</distanceunit>
+        <distanceunit abbr="ft" conversion="3.2808" precision="0">Feet</distanceunit>
+        <distanceunit abbr="mi" conversion="0.000621" precision="3">Miles</distanceunit>
+    </distanceunits>
+    <defaultdistanceunit>0</defaultdistanceunit>
+
+    <!-- Area units used for meaurement unit conversion -->
+    <areaunits>
+        <areaunit abbr="m²" conversion="1" precision="0">Square Meters</areaunit>
+        <areaunit abbr="km²" conversion="0.000001" precision="3">Square Kilometers</areaunit>
+        <areaunit abbr="ft²" conversion="10.763910417" precision="0">Square Feet</areaunit>
+        <areaunit abbr="mi²" conversion="0.0000003861021" precision="3">Square Miles</areaunit>
+        <areaunit abbr="ac" conversion="0.00024710538147" precision="0">Acres</areaunit>
+        <areaunit abbr="ha" conversion="0.0001" precision="0">Hectares</areaunit>
+    </areaunits>
+    <defaultareaunit>0</defaultareaunit>
+
+    <!-- Buffer units used for buffer generation -->
+	<bufferranges>
+		<bufferrange distance="50">50 metres</bufferrange>
+		<bufferrange distance="100">100 metres</bufferrange>
+		<bufferrange distance="500">500 metres</bufferrange>
+		<bufferrange distance="1000">1000 metres</bufferrange>
+	</bufferranges>	
+	<defaultbufferindex>3</defaultbufferindex>
+
+    <!-- Widget labels -->
+	<labels>
+	    <!-- Widget menu labels -->
+		<drawlabel>Drawing Tools</drawlabel>
+		<measurementoptionslabel>Measurment and Buffer Settings</measurementoptionslabel>
+		<selectedgraphicslabel>Selected Graphics</selectedgraphicslabel>
+		<graphicslistlabel>Map Graphics List</graphicslistlabel>
+		<openlabel>Open Saved Graphics Layer</openlabel>
+		<savelabel>Save Graphics Layer</savelabel>
+		
+		<!-- Measurement option labels --> 
+		<measurementslabel>Measurment Settings</measurementslabel>
+		<showmeasurementslabel>Show Measurements with Graphics:</showmeasurementslabel>
+		<distanceunitslabel>Distance Units:</distanceunitslabel>
+		<distanceunitstooltip>Choose measurements units to display distances in</distanceunitstooltip>
+		<areaunitslabel>Area Units:</areaunitslabel>
+		<areaunitstooltip>Choose measurements units to display areas in</areaunitstooltip>
+		<arealabel>Area: </arealabel>
+		<perimeterlabel>Perimeter: </perimeterlabel>	
+		<lengthlabel>Length: </lengthlabel>
+	
+		<!-- Buffer option labels --> 
+		<bufferslabel>Buffer Settings</bufferslabel>
+		<showbufferslabel>Generate buffers for drawn features</showbufferslabel>
+		<bufferunitlabel>Buffer:</bufferunitlabel>
+		<bufferunittooltip>Select distance to buffer graphics by</bufferunittooltip>
+		<bufferdistancelabel>Distance (m):</bufferdistancelabel>
+		<bufferdistancetooltip>Specify the exact distance you wish to use when generating buffer rings</bufferdistancetooltip>
+		<buffernumberlabel>No of Rings:</buffernumberlabel>
+		<buffernumbertooltip>Choose the number of buffer rings to generate</buffernumbertooltip>
+		<generatebufferlabel>Generate Buffers with Graphics:</generatebufferlabel>
+		<unionbufferslabel>Merge buffers together:</unionbufferslabel>
+		<unionbufferstooltip>Tick to merge together the boundaries of the generated buffered shapes</unionbufferstooltip>
+		
+		<!-- Toolbar labels --> 
+		<pointToolLabel>Draw Point</pointToolLabel>
+		<lineToolLabel>Draw Line</lineToolLabel>
+		<freehandLineToolLabel>Draw Freehand Line</freehandLineToolLabel>
+		<polygonToolLabel>Draw Polygon</polygonToolLabel>
+		<freehandPolygonToolLabel>Draw Freehand Polygon</freehandPolygonToolLabel>
+		<rectangleToolLabel>Draw Rectangle</rectangleToolLabel>
+		<circleToolLabel>Draw Circle</circleToolLabel>
+		<ellipseToolLabel>Draw Ellipse</ellipseToolLabel>
+		<textToolLabel>Add Text</textToolLabel>
+		<leaderTextToolLabel>Add Text with Leader</leaderTextToolLabel>
+		<selectToolLabel>Select Graphics</selectToolLabel>
+		<toolOptionsLabel>Set Default Symbology Options</toolOptionsLabel>
+		<clearToolLabel>Remove All Graphics</clearToolLabel>
+		<clearSelectionToolLabel>Deselect Graphics</clearSelectionToolLabel>
+	
+		<!-- Interactive Measurement Label Settings -->
+		<segmentlengthlabel>Line segment length:</segmentlengthlabel>
+		<totallengthlabel>Total line length:</totallengthlabel>
+	
+		<!-- Context menu labels -->
+		<clearfeaturelabel>Delete Feature</clearfeaturelabel>
+	</labels>
+	
+	
+	<!-- Symbol Templates -->
+	<defaulttemplates>
+		<!-- Simple Marker Templates -->
+		<template name="Circle" description="Basic circle marker" groupname="Basic Markers" drawingtool="mappoint" type="marker" style="circle" alpha="1" colour="0xFF0000" size="15" angle="0" xoffset="0" yoffset="0" outlinewidth="2" outlinecolour="0xFFFFFF" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Triangle" description="Basic triangle marker" groupname="Basic Markers" drawingtool="mappoint" type="marker" style="triangle" alpha="1" colour="0x0000FF" size="15" angle="0" xoffset="0" yoffset="0" outlinewidth="2" outlinecolour="0xFFFFFF" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Square" description="Basic square marker" groupname="Basic Markers" drawingtool="mappoint" type="marker" style="square" alpha="1" colour="0x33CCEE" size="15" angle="0" xoffset="0" yoffset="0" outlinewidth="2" outlinecolour="0x000000" outlinestyle="solid" outlinealpha="1" /> 
+	
+		<!-- Simple Line Templates -->
+		<template name="Red Line" description="Basic red line" groupname="Basic Lines" drawingtool="freehandLine" type="line" style="solid" alpha="1" colour="0xFF0000" width="1" /> 
+		<template name="Blue Line" description="Basic blue line" groupname="Basic Lines" drawingtool="pointToPointLine" type="line" style="solid" alpha="1" colour="0x0000FF" width="1" /> 
+		<template name="Green Line" description="Basic green line" groupname="Basic Lines" drawingtool="freehandLine" type="line" style="solid" alpha="1" colour="0x008000" width="1" /> 
+		<template name="White Line" description="Basic white line" groupname="Basic Lines" drawingtool="pointToPointLine" type="line" style="solid" alpha="1" colour="0xFFFFFF" width="2" /> 
+		<template name="Dashed Line" description="Basic dashed black line" groupname="Basic Lines" drawingtool="freehandLine" type="line" style="dash" alpha="1" colour="0x000033" width="2" /> 
+		<template name="Dotted Line" description="Basic dotted black line" groupname="Basic Lines" drawingtool="pointToPointLine" type="line" style="dot" alpha="1" colour="0x000033" width="2" /> 
+
+		<!-- Simple Fill Templates -->
+		<template name="Hollow" description="Outline only" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="null" alpha="0" colour="0x000000" outlinewidth="1" outlinecolour="0x000000" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Green" description="Partially transparent green fill with no outline" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="solid" alpha="0.6" colour="0x008B00" outlinewidth="0" outlinecolour="0xFFFFFF" outlinestyle="none" outlinealpha="0" /> 
+		<template name="Rose" description="Pale red fill" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="solid" alpha="1" colour="0xE33638" outlinewidth="1" outlinecolour="0x000000" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Beige" description="Beige fill" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="solid" alpha="1" colour="0xF5F5DC" outlinewidth="1" outlinecolour="0x000000" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Lilac" description="Lilac fill" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="solid" alpha="1" colour="0xFFBEE8" outlinewidth="1" outlinecolour="0x000000" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Lake" description="Pale blue fill with dark blue outline" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="solid" alpha="1" colour="0x7EC0EE" outlinewidth="1" outlinecolour="0x4876FF" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Gray" description="Gray fill" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="solid" alpha="1" colour="0xC2C2C2" outlinewidth="1" outlinecolour="0x000000" outlinestyle="solid" outlinealpha="1" /> 
+		<template name="Crosshatch" description="Black diagonally crosshatched fill" groupname="Basic Areas" drawingtool="pointToPointPolygon" type="fill" style="diagonalcross" alpha="1" colour="0x000033" outlinewidth="1" outlinecolour="0x000033" outlinestyle="solid" outlinealpha="1" /> 
+
+		<!-- Text Templates -->
+		<template name="Simple Black" description="Basic black font label" groupname="Basic Text" drawingtool="text" type="text" font="Arial" fontsize="11" alpha="1" bold="true" italic="false" underline="false" colour="0x000000" border="false" borderColour="0x000000" background="false" 
+			backgroundColour="0x000000" placement="middle" angle="0" xoffset="0" yoffset="0" leftmargin="0" rightmargin="0" align="center" />
+
+	</defaulttemplates>
+	
+	<!-- Help Location Settings -->
+	<helplocationurl></helplocationurl>
+</configuration>

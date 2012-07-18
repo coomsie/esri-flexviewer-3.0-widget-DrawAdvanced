@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>  
+<!---  Font picker group.  -->  
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"                    
+		 xmlns:s="library://ns.adobe.com/flex/spark"                    
+		 xmlns:mx="library://ns.adobe.com/flex/mx"                   
+		 creationComplete="creationCompleteHandler(event)">                    
+	
+	<fx:Metadata>
+		[Event(name="fontSettingUpdate", type="mx.events.FlexEvent")]
+	</fx:Metadata>
+	
+	<fx:Script>                  
+		<![CDATA[                          
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			//--------------------------------------------------                          
+			//                          
+			// Constants                          
+			//                          
+			//--------------------------------------------------                                                    
+			
+			/**                           
+			 * Property: font size.                           
+			 */                          
+			public static const FONT_SIZE : String = "fontSize";                                                    
+			
+			/**                           
+			 * Property: font family.                           
+			 */                          
+			public static const FONT_FAMILY : String = "fontFamily";                                                    
+			
+			/**                           
+			 * Property: font style.                           
+			 */                          
+			public static const FONT_STYLE : String = "fontStyle";                                                    
+			
+			/**                           
+			 * Property: font weight.                           
+			 */                          
+			public static const FONT_WEIGHT : String = "fontWeight";                                                    
+			
+			//--------------------------------------------------                          
+			//                          
+			// Properties                          
+			//                          
+			//--------------------------------------------------                                                    
+			[Bindable("testTextChange")]                          
+			private var ttext : String = "RichFlex";                                                    
+			/**                           
+			 * Text string to show.                           
+			 */                          
+			public function set testText(value : String) : void                          
+			{                                  
+				if(ttext != value) 
+				{                                          
+					ttext = value;                                          
+					dispatchEvent(new Event("testTextChange"));                                  
+				}                          
+			}                                                    
+			
+			private var fp : Object;                                                    
+			
+			public function set fontProps(value : Object) : void                          
+			{                                  
+				fp = value;                                  
+				if(lstFont != null) 
+				{                                          
+					resetFontProps(true);                                  
+				}                          
+			}                                                    
+			
+			public function get fontProps() : Object                          
+			{                                  
+				return fp;                          
+			}                                                    
+			
+			[Bindable]
+			private var _showPreview:Boolean = true;
+			
+			public function set showPreview(value:Boolean):void
+			{
+				_showPreview = value;
+			}
+			
+			public function get showPreview():Boolean
+			{
+				return _showPreview;
+			}
+			
+			//--------------------------------------------------                          
+			//                          
+			// Handlers                          
+			//                          
+			//--------------------------------------------------                                                    
+			private function lstFont_changeHandler(event:IndexChangeEvent):void                          
+			{                                  
+				previewer.setStyle("fontFamily", lstFont.selectedItem.fontName);                          
+				fp.fontFamily = lstFont.selectedItem.fontName;
+				dispatchEvent(new FlexEvent("fontSettingUpdate"));
+			}                                                    
+			
+			private function txtFontSize_valueCommitHandler(event:FlexEvent):void                          
+			{                                  
+				previewer.setStyle("fontSize", Number(txtFontSize.text));
+				fp.fontSize = Number(txtFontSize.text);
+				dispatchEvent(new FlexEvent("fontSettingUpdate"));
+			}                                                    
+			
+			private function chkFontBold_changeHandler(event:Event):void                          
+			{                                  
+				previewer.setStyle("fontWeight", chkFontBold.selected ? "bold" : "normal");                          
+				fp.fontWeight = chkFontBold.selected ? "bold" : "normal";
+				dispatchEvent(new FlexEvent("fontSettingUpdate"));
+			}                                                    
+			
+			private function chkFontItalic_changeHandler(event:Event):void                          
+			{                                  
+				previewer.setStyle("fontStyle", chkFontItalic.selected ? "italic" : "normal");                          
+				fp.fontStyle = chkFontItalic.selected ? "italic" : "normal";
+				dispatchEvent(new FlexEvent("fontSettingUpdate"));
+			}                                                    
+			
+			protected function chkFontUnderline_changeHandler(event:Event):void
+			{
+				previewer.setStyle("textDecoration", chkFontUnderline.selected ? "underline" : "none");
+				fp.textDecoration = chkFontUnderline.selected ? "underline" : "none";
+				dispatchEvent(new FlexEvent("fontSettingUpdate"));
+			}
+			
+			private function lstFontSize_changeHandler(event:IndexChangeEvent):void                          
+			{                                  
+				txtFontSize.text = lstFontSize.selectedItem.toString();
+			}                                                    
+			
+			private function txtFontSize_changeHandler(event:TextOperationEvent):void                          
+			{                                  
+				var idx : int = fontSizeList.getItemIndex(txtFontSize.text);                                  
+				lstFontSize.selectedIndex = idx;                                  
+				lstFontSize.ensureIndexIsVisible(idx);                          
+			}                                                    
+			
+			private function creationCompleteHandler(event:FlexEvent):void                          
+			{                                  
+				var fontArray : Array = Font.enumerateFonts(true);                                  
+				fontArray.sortOn("fontName");                                  
+				var fontList : ArrayList = new ArrayList(fontArray);                                  
+				lstFont.dataProvider = fontList;                                                                    
+				if(fp == null) 
+				{                                          
+					fp = {                                                  
+						fontSize: 14,                                                  
+						fontFamily: "Arial",                                                  
+						fontWeight: "normal",                                                  
+						fontStyle: "normal", 
+						textDecoration: "none"
+					};                                  
+				}                                  
+				resetFontProps(false);                          
+			}                            
+			
+			private function resetFontProps(ensureSelectedFontVisible : Boolean) : void                          
+			{                                  
+				if (lstFont.dataProvider)
+				{
+				for(var i : int = 0, len : int = lstFont.dataProvider.length; i < len; i++) 
+				{                                          
+					var font : Font = Font(lstFont.dataProvider.getItemAt(i));                                          
+					if(font.fontName == fp.fontFamily) 
+					{                                                  
+						lstFont.selectedItem = font;                                                  
+						if(ensureSelectedFontVisible) 
+						{                                                          
+							lstFont.ensureIndexIsVisible(lstFont.selectedIndex);                                                  
+						}                                                  
+						break;                                          
+					}                                  
+				}                                  
+				txtFontSize.text = fp.fontSize.toString();                                  
+				
+				var idx : int = fontSizeList.getItemIndex(txtFontSize.text);                                  
+				lstFontSize.selectedIndex = idx;                                  
+				lstFontSize.ensureIndexIsVisible(idx);                                  
+				chkFontBold.selected = fp.fontWeight == "bold";                                  
+				chkFontItalic.selected = fp.fontStyle == "italic";  
+				chkFontUnderline.selected = fp.textDecoration == "underline";
+				previewer.setStyle("fontFamily", lstFont.selectedItem.fontName);                                  
+				previewer.setStyle("fontSize", Number(txtFontSize.text));                                  
+				previewer.setStyle("fontWeight", chkFontBold.selected ? "bold" : "normal");                                  
+				previewer.setStyle("fontStyle", chkFontItalic.selected ? "italic" : "normal");                          
+				previewer.setStyle("textDecoration", chkFontItalic.selected ? "underline" : "none"); 
+				}
+			}                            
+			
+			private function lstFont_updateCompleteHandler(event:FlexEvent):void                          
+			{                                  
+				lstFont.ensureIndexIsVisible(lstFont.selectedIndex);                          
+			}                   
+
+		]]>          
+		
+	</fx:Script>  
+	
+	<s:layout>                  
+		<s:VerticalLayout gap="5" paddingLeft="3" paddingRight="3" paddingBottom="3" paddingTop="3" />          
+	</s:layout>                    
+	
+	<s:HGroup width="100%" gap="5" horizontalAlign="center" >
+
+		<!-- Font Settings -->
+		<s:VGroup width="60%" gap="5">
+			<s:Label text="Font" width="100%"/>          
+			<s:List id="lstFont" width="100%" height="130" labelField="fontName" change="lstFont_changeHandler(event)"
+					updateComplete="lstFont_updateCompleteHandler(event)">
+			</s:List>          
+		</s:VGroup>
+		
+		<!-- Style Settings -->
+		<s:VGroup width="30%" gap="5">
+			<s:Label text="Style" width="100%" />          
+			<s:CheckBox id="chkFontBold" width="100%" label="Bold" change="chkFontBold_changeHandler(event)"/>          
+			<s:CheckBox id="chkFontItalic" width="100%" label="Italic" change="chkFontItalic_changeHandler(event)"/>         
+			<s:CheckBox id="chkFontUnderline" width="100%" label="Underline" change="chkFontUnderline_changeHandler(event)"/> 
+		</s:VGroup>
+
+		<!-- Size Settings -->
+		<s:VGroup width="10%" gap="5">
+			<s:Label width="100%" text="Size" />          
+			<s:TextInput id="txtFontSize" width="100%" text="10" restrict="0-9"                                   
+						 valueCommit="txtFontSize_valueCommitHandler(event)" change="txtFontSize_changeHandler(event)" />
+			<s:List id="lstFontSize" width="100%" height="100" change="lstFontSize_changeHandler(event)">                  
+				<s:dataProvider>                          
+					<s:ArrayList id="fontSizeList">
+						<fx:String>8</fx:String>                                  
+						<fx:String>9</fx:String>                                  
+						<fx:String>10</fx:String>                                  
+						<fx:String>11</fx:String>                                  
+						<fx:String>12</fx:String>                                  
+						<fx:String>14</fx:String>                                  
+						<fx:String>16</fx:String>                                  
+						<fx:String>18</fx:String>                                  
+						<fx:String>20</fx:String>                                  
+						<fx:String>22</fx:String>                                  
+						<fx:String>24</fx:String>                                  
+						<fx:String>26</fx:String>                                  
+						<fx:String>28</fx:String>                                  
+						<fx:String>36</fx:String>                                  
+						<fx:String>48</fx:String>                                  
+						<fx:String>72</fx:String>                          
+					</s:ArrayList>                  
+				</s:dataProvider>          
+			</s:List>
+		</s:VGroup>
+	
+	</s:HGroup>
+
+	<s:Group width="100%" height="43" visible="{_showPreview}" includeInLayout="{_showPreview}">                  
+		<s:Label id="previewer" text="{ttext}"                                   
+				 left="0" right="0" top="0" bottom="0" verticalAlign="middle" textAlign="center"/>          
+	</s:Group>            
+</s:Group>  

@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TitleWindow xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   xmlns:nzgcComponents="widgets.SENZ_DrawAdvanced.com.nzgc.viewer.components.*"
+			   width="400" 
+			   height="400"
+			   title="Graphic Editor"
+			   skinClass="widgets.SENZ_DrawAdvanced.com.nzgc.viewer.skins.ViewerTitleWindowSkin" >
+	
+	<!-- Add events for calling applications to bind to. -->
+	<fx:Metadata>
+		[Event(name="graphicEditor_Save", type="flash.events.Event")]
+		[Event(name="graphicEditor_SaveTemplate", type="flash.events.Event")]
+		[Event(name="graphicEditor_Cancel", type="flash.events.Event")]
+	</fx:Metadata>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.symbols.SimpleFillSymbol;
+			import com.esri.ags.symbols.SimpleLineSymbol;
+			import com.esri.ags.symbols.SimpleMarkerSymbol;
+			import com.esri.ags.symbols.Symbol;
+			import com.esri.ags.symbols.TextSymbol;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.components.supportClasses.GraphicPropertiesItem;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.components.supportClasses.GraphicTemplate;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.utils.GraphicUtil;
+			import widgets.SENZ_DrawAdvanced.com.nzgc.viewer.utils.SymbolUtil;
+			
+			import flashx.textLayout.conversion.TextConverter;
+			
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.TextOperationEvent;
+			
+			/* -------------------------------------------------------------------
+			Component constants
+			---------------------------------------------------------------------- */
+			
+			public static const GRAPHICEDITOR_SAVE:String = "graphicEditor_Save";
+			public static const GRAPHICEDITOR_SAVETEMPLATE:String = "graphicEditor_SaveTemplate";
+			public static const GRAPHICEDITOR_CANCEL:String = "graphicEditor_Cancel";
+			
+			
+			/* -------------------------------------------------------------------
+			Component variables
+			---------------------------------------------------------------------- */
+			
+			[Bindable]
+			private var _graphic:Graphic;
+			
+			[Bindable]
+			private var _newGraphic:Graphic;
+			
+			[Bindable]
+			private var _showSaveTemplate:Boolean = false;
+			
+			[Bindable]
+			private var _newTemplate:GraphicTemplate;
+
+			[Bindable]
+			private var _link:String;
+
+			[Bindable]
+			private var _title:String;
+			
+			[Bindable]
+			private var _showMeasurements:Boolean;
+
+			private var _content:String;
+			
+			/* -------------------------------------------------------------------
+			Component properties
+			---------------------------------------------------------------------- */
+			
+			/**
+			 * Sets the graphic whos properties that will be edited/updated.
+			 * <p>
+			 * <b>Parameters</b><br/>
+			 * <ul>
+			 * <li><i>value [Graphic]:</i> Graphic whose properties  will be editied.</li>
+			 * </ul>
+			 * </p> 
+			 */
+			public function get graphic():Graphic
+			{
+				return _graphic;
+			}
+			
+			public function set graphic(value:Graphic):void
+			{
+				if (value)
+				{
+					_graphic = value;
+					
+					// Create a new graphic to use as the edit function
+					_newGraphic = GraphicUtil.CopyGraphic(_graphic);
+					
+					// Set the symbol editor
+					symbolEditor.symbol = _newGraphic.symbol;
+					
+					// If textsymbol
+					if (_newGraphic.symbol is TextSymbol)
+					{
+						txtLabelText.text = TextSymbol(_newGraphic.symbol).text;
+					}
+					
+					_link = value.attributes.link;
+					_title = value.attributes.title;
+					_showMeasurements = value.attributes.showMeasurements;
+					_content = value.attributes.content;
+				}
+			}
+			
+			/**
+			 * Sets the graphic whos properties that will be edited/updated.
+			 * <p>
+			 * <b>Parameters</b><br/>
+			 * <ul>
+			 * <li><i>value [Graphic]:</i> Graphic whose properties  will be editied.</li>
+			 * </ul>
+			 * </p> 
+			 */
+			public function get newGraphic():Graphic
+			{
+				return _newGraphic;
+			}
+			
+			/**
+			 * Specifies whether the component allows the functionality for the creation of 
+			 * a new graphic template based on current properites of the graphic being edited.
+			 * <p>
+			 * <b>Parameters</b><br/>
+			 * <ul>
+			 * <li><i>value [Boolean]:</i> Flag for whether the use can create a template. 
+			 * <b>true</b> specifes the template creation functionality will be available.  
+			 * <b>false</b> hides that functionality.</li>
+			 * </ul>
+			 * </p> 
+			 */
+			public function get allowTemplateCreation():Boolean
+			{
+				return _showSaveTemplate;
+			}
+			
+			public function set allowTemplateCreation(value:Boolean):void
+			{
+				if (value)
+				{
+					_showSaveTemplate = value;
+				}
+			}
+			
+			
+			
+			/* -------------------------------------------------------------------
+			Component actions
+			---------------------------------------------------------------------- */
+			
+			/**
+			 * Called when the user clicks the save template button
+			 */
+			protected function butSaveAsTemplate_clickHandler(event:MouseEvent):void
+			{
+				// Update the template
+				updateNewTemplate();
+				
+				// Dispatch the Save New event
+				dispatchEvent(new Event(GRAPHICEDITOR_SAVETEMPLATE));	
+			}
+			
+			/**
+			 * Called when the OK button is clicked.
+			 */
+			protected function butOK_clickHandler(event:MouseEvent):void
+			{
+				// Update the settings
+				updateSettings();
+				
+				// Dispatch the Save New event
+				dispatchEvent(new Event(GRAPHICEDITOR_SAVE));	
+			}
+			
+			/**
+			 * Called when the cancel button is clicked.
+			 */
+			protected function butCancel_clickHandler(event:MouseEvent):void
+			{
+				// Dispatch the Save New event
+				dispatchEvent(new Event(GRAPHICEDITOR_CANCEL));	
+			}
+			
+			private function updateSettings():void
+			{
+				
+				// Update the symbol
+				_newGraphic.symbol = symbolEditor.NewSymbol;
+				
+				// Update the label text on Textsymbols
+				if (_newGraphic.symbol is TextSymbol && txtLabelText.text.length > 0)
+				{
+					TextSymbol(_newGraphic.symbol).text = txtLabelText.text;
+				}
+
+				/*
+				// Update the graphic attributes
+				//var props:GraphicPropertiesItem = _newGraphic.attributes as GraphicPropertiesItem;
+				//props.title = txtTitle.text;
+				//props.content = txtContent.textFlow.getText();
+				//props.link = txtLink.text;
+				//props.showMeasurements = chkShowMeasurements.selected;
+				*/
+				_newGraphic.attributes.title = _title;
+				_newGraphic.attributes.content = _content;
+				_newGraphic.attributes.link = _link;
+				_newGraphic.attributes.showMeasurements = _showMeasurements;
+			
+			}
+			
+			/** 
+			 * Called to update the settings of the new template
+			 */
+			private function updateNewTemplate():void
+			{
+				// Create a new template
+				_newTemplate = new GraphicTemplate();
+				
+				// Update the settings
+				//_newTemplate.name = txtTemplateName.text;
+				//_newTemplate.description = txtTemplateDescription.text;
+				//_newTemplate.groupname = txtTemplateGroupName.text;
+				//_newTemplate.drawingTool = drawDropDownList.selectedItem.drawId;
+				_newTemplate.prototype = new Graphic();
+				_newTemplate.prototype.symbol = symbolEditor.NewSymbol;
+			} 
+			
+			/**
+			 * Called when the user clicks on the test link event
+			 */
+			protected function butTestLink_clickHandler(event:MouseEvent):void
+			{
+				// Execute the navigation event to a new window
+				navigateToURL(new URLRequest(txtLink.text),"_blank");
+			}
+
+
+			protected function txtContent_changeHandler(event:TextOperationEvent):void
+			{
+				_content = txtContent.text;
+			}
+
+
+			protected function chkShowMeasurements_changeHandler(event:Event):void
+			{
+				_showMeasurements = chkShowMeasurements.selected;
+			}
+
+
+			protected function txtLink_changeHandler(event:TextOperationEvent):void
+			{
+				_link = txtLink.text;
+			}
+
+
+			protected function txtTitle_changeHandler(event:TextOperationEvent):void
+			{
+				_title = txtTitle.text;
+			}
+
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<s:VGroup width="100%" height="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" >
+		
+		<s:TabBar id="tabs" buttonMode="true" useHandCursor="true" dataProvider="{settingTabs}"/>
+		
+		<mx:ViewStack id="settingTabs" width="100%" height="100%" paddingLeft="3" 
+					  paddingRight="3" paddingBottom="3" paddingTop="3" clipContent="true" >
+			
+			<s:NavigatorContent id="symbolTab" label="Symbol Settings">
+				<s:layout>
+					<s:VerticalLayout gap="5" />
+				</s:layout>
+				<nzgcComponents:SymbolEditor id="symbolEditor" width="100%"/>
+				
+				<s:HGroup id="textSymbolSettings" width="100%" gap="5" verticalAlign="middle" 
+						  visible="{_graphic.symbol is TextSymbol &amp;&amp; 
+						  			_graphic.attributes.showMeasurements == false}" 
+						  includeInLayout="{_graphic.symbol is TextSymbol &amp;&amp; 
+						  _graphic.attributes.showMeasurements == false}" >
+					<s:Label text="Label Text" width="30%" styleName="WidgetTitle"/>
+					<s:TextInput id="txtLabelText" width="70%" />
+				</s:HGroup>
+				
+			</s:NavigatorContent> 
+			
+			<s:NavigatorContent id="propertyTab" label="Graphic Settings" >
+				<s:layout>
+					<s:VerticalLayout gap="5" />
+				</s:layout>
+
+				<s:HGroup gap="5" width="100%" verticalAlign="middle" >
+					<s:Label text="Title" width="30%" styleName="WidgetTitle"/>
+					<s:TextInput id="txtTitle" width="70%" text="{_newGraphic.attributes.title}" change="txtTitle_changeHandler(event)" />
+				</s:HGroup>
+
+				<s:HGroup gap="5" width="100%" verticalAlign="middle" >
+					<s:Label text="Content" width="30%" styleName="WidgetTitle"/>
+					<s:TextArea id="txtContent" width="70%" heightInLines="5" editable="true"
+								textFlow="{TextConverter.importToFlow(_newGraphic.attributes.content,
+								TextConverter.TEXT_FIELD_HTML_FORMAT)}" 
+								change="txtContent_changeHandler(event)"/>
+				</s:HGroup>
+
+				<s:HGroup gap="5" width="100%" verticalAlign="middle" >
+					<s:Label text="Show Measurements" width="30%" styleName="WidgetTitle"/>
+					<s:CheckBox id="chkShowMeasurements" selected="{_newGraphic.attributes.showMeasurements}" change="chkShowMeasurements_changeHandler(event)" />
+				</s:HGroup>
+
+				<s:HGroup gap="5" width="100%" verticalAlign="middle" >
+					<s:Label text="Link" width="30%" styleName="WidgetTitle"/>
+					<s:TextInput id="txtLink" width="55%" text="{_newGraphic.attributes.link}" change="txtLink_changeHandler(event)" />
+					<s:Button id="butTestLink" label="Test" click="butTestLink_clickHandler(event)" 
+							  toolTip="Click to test this link" enabled="{txtLink.text.length > 0}" width="15%" />
+				</s:HGroup>
+				
+			</s:NavigatorContent> 
+			
+		</mx:ViewStack>
+		
+		<s:HGroup width="100%" horizontalAlign="left" verticalAlign="middle"  gap="5">
+			<!-- Create new template section -->
+			<s:Button id="butSaveAsTemplate" label="Save As Template" 
+					  toolTip="Click to create a new template based on these properties" 
+					  click="butSaveAsTemplate_clickHandler(event)" x="5"
+					  visible="{_showSaveTemplate}" includeInLayout="{_showSaveTemplate}"/>
+			
+			<s:HGroup id="graphicActionGroup" width="100%" horizontalAlign="right" gap="5" verticalAlign="middle" >
+				<s:Button id="butOK" label="Apply" toolTip="Click to update the selected graphic properties" 
+						  click="butOK_clickHandler(event)" visible="{_graphic != null}" includeInLayout="{_graphic != null}" />
+				<s:Button id="butCancel" label="Cancel" toolTip="Click to cancel graphic edits" 
+						  click="butCancel_clickHandler(event)" />
+			</s:HGroup>
+			
+		</s:HGroup>
+	</s:VGroup>
+	
+	
+</s:TitleWindow>
