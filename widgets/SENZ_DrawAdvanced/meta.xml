@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<configuration>
+    <openbydefault>false</openbydefault>
+    <icon>assets/images/i_measure_options.png</icon>
+    <label>Advanced Drawing Widget</label>
+    <description>Advanced Drawing Widget created by Ryan Elley, upgraded by coomsie to fit ArcGIS API 3.0 for Flex</description>
+    <helpurl>http://www.arcgis.com/home/item.html?id=794b0a10e3b3413e9f3b7870acb9953f</helpurl>
+    <widgetversion>3.0.0.0</widgetversion>
+</configuration>
